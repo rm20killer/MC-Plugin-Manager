@@ -1,0 +1,195 @@
+{
+  "plugins": [
+    {
+      "plugin_name": "Citizens",
+      "plugin_id": 2456,
+      "plugin_file_name": "Citizens-2.0.35-b3494.jar",
+      "plugin_file_version": "2.0.353494",
+      "plugin_repository": "https://www.spigotmc.org/resources/2456/"
+    },
+    {
+      "plugin_name": "CoreProtect",
+      "plugin_id": 8631,
+      "plugin_file_name": "CoreProtect-22.4.jar",
+      "plugin_file_version": "22.4",
+      "plugin_repository": "https://www.spigotmc.org/resources/8631/"
+    },
+    {
+      "plugin_name": "F3NPerm",
+      "plugin_id": 46461,
+      "plugin_file_name": "F3NPerm-3.5.jar",
+      "plugin_file_version": "3.5",
+      "plugin_repository": "https://www.spigotmc.org/resources/46461/"
+    },
+    {
+      "plugin_name": "GSit",
+      "plugin_id": 62325,
+      "plugin_file_name": "GSit-2.3.2.jar",
+      "plugin_file_version": "2.3.2",
+      "plugin_repository": "https://www.spigotmc.org/resources/62325/"
+    },
+    {
+      "plugin_name": "HeadDatabase",
+      "plugin_id": 56616,
+      "plugin_file_name": "HeadDatabase-4.19.8.jar",
+      "plugin_file_version": "4.19.8",
+      "plugin_repository": "https://www.spigotmc.org/resources/56616/"
+    },
+    {
+      "plugin_name": "InteractiveChat",
+      "plugin_id": 75870,
+      "plugin_file_name": "InteractiveChat-4.2.12.0.jar",
+      "plugin_file_version": "4.2.12.0",
+      "plugin_repository": "https://www.spigotmc.org/resources/75870/"
+    },
+    {
+      "plugin_name": "InventoryRollbackPlus",
+      "plugin_id": "XWKWAzd8",
+      "plugin_file_name": "InventoryRollbackPlus-1.6.17.jar",
+      "plugin_file_version": "1.6.17",
+      "plugin_repository": "https://modrinth.com/plugin/XWKWAzd8"
+    },
+    {
+      "plugin_name": "KeepChunks",
+      "plugin_id": 23307,
+      "plugin_file_name": "KeepChunks-1.7.3.jar",
+      "plugin_file_version": "1.7.3",
+      "plugin_repository": "https://www.spigotmc.org/resources/23307/",
+      "plugin_latest_version": "1.7.3",
+      "plugin_is_outdated": false
+    },
+    {
+      "plugin_name": "LastLoginAPI",
+      "plugin_id": 66348,
+      "plugin_file_name": "LastLoginAPI-1.7.4.jar",
+      "plugin_file_version": "1.7.4",
+      "plugin_repository": "https://www.spigotmc.org/resources/66348/"
+    },
+    {
+      "plugin_name": "LessEntropy",
+      "plugin_id": 95589,
+      "plugin_file_name": "LessEntropy-2.1.0.jar",
+      "plugin_file_version": "2.1.0",
+      "plugin_repository": "https://www.spigotmc.org/resources/95589/"
+    },
+    {
+      "plugin_name": "LibsDisguises.jar",
+      "plugin_id": null,
+      "plugin_file_name": "LibsDisguises.jar",
+      "plugin_file_version": "",
+      "plugin_repository": null
+    },
+    {
+      "plugin_name": "LuckPerms",
+      "plugin_id": 18096,
+      "plugin_file_name": "LuckPerms-Bukkit-5.4.137.jar",
+      "plugin_file_version": "5.4.137",
+      "plugin_repository": "https://www.spigotmc.org/resources/18096/"
+    },
+    {
+      "plugin_name": "multiverse",
+      "plugin_id": 390,
+      "plugin_file_name": "multiverse-core-4.3.13-pre.2.jar",
+      "plugin_file_version": "4.3.13.2",
+      "plugin_repository": "https://www.spigotmc.org/resources/390/"
+    },
+    {
+      "plugin_name": "NerdBoard",
+      "plugin_id": null,
+      "plugin_file_name": "NerdBoard-1.0.0.jar",
+      "plugin_file_version": "1.0.0",
+      "plugin_repository": null
+    },
+    {
+      "plugin_name": "NerdPoints",
+      "plugin_id": null,
+      "plugin_file_name": "NerdPoints-1.1.0.jar",
+      "plugin_file_version": "1.1.0",
+      "plugin_repository": null
+    },
+    {
+      "plugin_name": "NerdSpawn",
+      "plugin_id": "yzvfFUQ0",
+      "plugin_file_name": "NerdSpawn-2.3.0.jar",
+      "plugin_file_version": "2.3.0",
+      "plugin_repository": "https://modrinth.com/plugin/yzvfFUQ0"
+    },
+    {
+      "plugin_name": "PAPIProxyBridge",
+      "plugin_id": 108415,
+      "plugin_file_name": "PAPIProxyBridge-1.8.jar",
+      "plugin_file_version": "1.8",
+      "plugin_repository": "https://www.spigotmc.org/resources/108415/"
+    },
+    {
+      "plugin_name": "PlaceholderAPI",
+      "plugin_id": 3031,
+      "plugin_file_name": "PlaceholderAPI-2.11.6.jar",
+      "plugin_file_version": "2.11.6",
+      "plugin_repository": "https://www.spigotmc.org/resources/3031/"
+    },
+    {
+      "plugin_name": "ProtocolLib (1).jar",
+      "plugin_id": "tzImVZZt",
+      "plugin_file_name": "ProtocolLib (1).jar",
+      "plugin_file_version": "",
+      "plugin_repository": "https://modrinth.com/plugin/tzImVZZt"
+    },
+    {
+      "plugin_name": "SimplePronouns",
+      "plugin_id": 110778,
+      "plugin_file_name": "SimplePronouns-1.0.2.jar",
+      "plugin_file_version": "1.0.2",
+      "plugin_repository": "https://www.spigotmc.org/resources/110778/"
+    },
+    {
+      "plugin_name": "Skript",
+      "plugin_id": 3050,
+      "plugin_file_name": "Skript-2.11.0.jar",
+      "plugin_file_version": "2.11.0",
+      "plugin_repository": "https://www.spigotmc.org/resources/3050/"
+    },
+    {
+      "plugin_name": "SkUniversal",
+      "plugin_id": 45392,
+      "plugin_file_name": "SkUniversal-2.13.jar",
+      "plugin_file_version": "2.13",
+      "plugin_repository": "https://www.spigotmc.org/resources/45392/"
+    },
+    {
+      "plugin_name": "WarpSystem",
+      "plugin_id": 5400,
+      "plugin_file_name": "WarpSystem_v5.1.13.jar",
+      "plugin_file_version": "5.1.13",
+      "plugin_repository": "https://www.spigotmc.org/resources/5400/"
+    },
+    {
+      "plugin_name": "worldedit",
+      "plugin_id": 327,
+      "plugin_file_name": "worldedit-bukkit-7.3.6.jar",
+      "plugin_file_version": "7.3.6",
+      "plugin_repository": "https://www.spigotmc.org/resources/327/"
+    },
+    {
+      "plugin_name": "worldguard",
+      "plugin_id": 4346,
+      "plugin_file_name": "worldguard-bukkit-7.0.11-beta1-dist.jar",
+      "plugin_file_version": "7.0.111",
+      "plugin_repository": "https://www.spigotmc.org/resources/4346/"
+    },
+    {
+      "plugin_name": "WorldGuardExtraFlagsREBORN",
+      "plugin_id": null,
+      "plugin_file_name": "WorldGuardExtraFlagsREBORN-2.6.jar",
+      "plugin_file_version": "2.6",
+      "plugin_repository": null
+    },
+    {
+      "plugin_name": "WorldGuardGUI",
+      "plugin_id": 95870,
+      "plugin_file_name": "WorldGuardGUI-1.1.3.jar",
+      "plugin_file_version": "1.1.3",
+      "plugin_repository": "https://www.spigotmc.org/resources/95870/"
+    }
+  ]
+}

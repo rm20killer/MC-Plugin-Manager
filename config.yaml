@@ -1,0 +1,5 @@
+Connection: local
+
+Local:
+  PathToPluginFolder: D:/server/server manager/servers/1.12.5 testing/plugins
+  FileName: plugins.json

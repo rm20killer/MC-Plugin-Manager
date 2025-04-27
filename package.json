@@ -1,0 +1,19 @@
+{
+  "name": "mc-plugin-manager",
+  "version": "1.0.0",
+  "description": "A node JS plugin manager to update plugins",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "RM20",
+  "license": "GNU General Public License v3.0",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "cli-progress": "^3.12.0",
+    "figlet": "^1.8.1",
+    "gradient-string": "^3.0.0",
+    "inquirer": "^12.6.0",
+    "table": "^6.9.0"
+  }
+}
