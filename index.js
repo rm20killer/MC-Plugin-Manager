@@ -185,7 +185,15 @@ const handleCommand = async (input) => {
 		},
 		u: "update",
 		index: async () => {
-			await index.IndexFolder();
+			if (args.length >= 1) {
+				if (args[0] === "-s") {
+					await index.IndexFolder(true);
+				} else {
+					await index.IndexFolder(false);
+				}
+			} else {
+				await index.IndexFolder(false);
+			}
 		},
 		exit: () => {
 			console.log(chalk.gray("Exiting PlugManager."));

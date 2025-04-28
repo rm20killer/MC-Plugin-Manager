@@ -4,13 +4,19 @@ const chalk = require("chalk");
 const { table } = require("table");
 const cliProgress = require("cli-progress");
 const supportedVersions = require("./plugin-version-support.js");
-
+const { json } = require("stream/consumers");
 
 // const config = require("../config.yaml");
-async function IndexFolder() {
+async function IndexFolder(shouldskip) {
 	const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
 	// const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
 	const FileName = "plugins.json";
+
+	let skip = false;
+
+	if (shouldskip) {
+		skip = true;
+	}
 
 	const filePath = path.join(PathToPluginFolder, FileName);
 	//get all files in the folder ending with .jar
@@ -76,10 +82,12 @@ async function IndexFolder() {
 						plugin_file_name: file,
 						plugin_file_version: versionNumber,
 						plugin_latest_version: newVersionNumber,
-            plugin_supported_versions: await supportedVersions.spigotSupportedVersions(pluginData.id),
+						plugin_supported_versions:
+							await supportedVersions.spigotSupportedVersions(pluginData.id),
 						plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
 						plugin_repository: `https://www.spigotmc.org/resources/${pluginData.id}/`,
 					});
+          //modrinth check
 				} else {
 					let pluginData = await ModrinthCheck(pluginName);
 					if (pluginData) {
@@ -90,22 +98,80 @@ async function IndexFolder() {
 							plugin_file_name: file,
 							plugin_file_version: versionNumber,
 							plugin_latest_version: newVersionNumber,
-              plugin_supported_versions: await  supportedVersions.modrinthSupportedVersions(pluginData.project_id),
+							plugin_supported_versions:
+								await supportedVersions.modrinthSupportedVersions(
+									pluginData.project_id
+								),
 							plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
 							plugin_repository: `https://modrinth.com/plugin/${pluginData.project_id}`,
 						});
 					} else {
-						console.log(chalk.red(` | Plugin "${pluginName}" not found`));
-						//still push data to the index.json file with the plugin name and file name only
-						indexData.plugins.push({
-							plugin_name: pluginName,
-							plugin_id: null,
-							plugin_file_name: file,
-							plugin_file_version: versionNumber,
-							plugin_latest_version: null,
-							plugin_is_outdated: null,
-							plugin_repository: null,
-						});
+						let data = await GetUserPlugins(pluginName);
+						if (data && data.plugin_name) {
+              let lastVersion;
+              if(data.plugin_repository.includes("spigotmc.org")) {
+                lastVersion = await spigotCheckVersion(data.plugin_id);
+              } else if(data.plugin_repository.includes("modrinth.com")) {
+                lastVersion = await ModrinthCheckVersion(data.plugin_id);
+              }
+							if (!versionNumber) {
+								versionNumber = "0.0.0";
+							}
+							let pluginData = {
+								plugin_name: pluginName,
+								plugin_id: data.plugin_id,
+								plugin_file_name: file,
+								plugin_file_version: versionNumber,
+								plugin_latest_version: lastVersion,
+								plugin_is_outdated: CheckVersion(versionNumber, lastVersion),
+								plugin_repository: data.plugin_repository,
+							};
+							indexData.plugins.push(pluginData);
+						} else {
+							console.log(chalk.red(` | Plugin "${pluginName}" not found`));
+							if (!skip) {
+								let data = await AddUserLink(pluginName, file, versionNumber);
+								if (data) {
+									let lastVersion = await spigotCheckVersion(data.plugin_id);
+									if (!versionNumber) {
+										versionNumber = "0.0.0";
+									}
+									let pluginData = {
+										plugin_name: pluginName,
+										plugin_id: data.plugin_id,
+										plugin_file_name: file,
+										plugin_file_version: versionNumber,
+										plugin_latest_version: lastVersion,
+										plugin_is_outdated: CheckVersion(versionNumber, lastVersion),
+										plugin_repository: data.plugin_repository,
+									};
+									indexData.plugins.push(pluginData);
+									AddToStorage(pluginData);
+								} else {
+									//still push data to the index.json file with the plugin name and file name only
+									indexData.plugins.push({
+										plugin_name: pluginName,
+										plugin_id: null,
+										plugin_file_name: file,
+										plugin_file_version: versionNumber,
+										plugin_latest_version: null,
+										plugin_is_outdated: null,
+										plugin_repository: null,
+									});
+								}
+							} else {
+								//if skip is true, just add the plugin to the index.json file with the plugin name and file name only
+								indexData.plugins.push({
+									plugin_name: pluginName,
+									plugin_id: null,
+									plugin_file_name: file,
+									plugin_file_version: versionNumber,
+									plugin_latest_version: null,
+									plugin_is_outdated: null,
+									plugin_repository: null,
+								});
+							}
+						}
 					}
 				}
 			}
@@ -132,7 +198,7 @@ async function IndexFolder() {
 			"File Name",
 			"File Version",
 			"Latest Version",
-      "supported Versions",
+			"supported Versions",
 			"outdated",
 			"Repository",
 		],
@@ -144,7 +210,7 @@ async function IndexFolder() {
 			plugin.plugin_file_name,
 			plugin.plugin_file_version,
 			plugin.plugin_latest_version,
-      plugin.plugin_supported_versions,
+			plugin.plugin_supported_versions,
 			plugin.plugin_is_outdated,
 			plugin.plugin_repository,
 		]);
@@ -281,7 +347,7 @@ async function ModrinthCheck(pluginName) {
 	}
 }
 async function GetModrinthVersionID(pluginID) {
-  try {
+	try {
 		const response = await fetch(
 			`https://api.modrinth.com/v2/project/${pluginID}/version`
 		);
@@ -352,6 +418,9 @@ async function spigotCheckVersion(pluginID) {
 }
 
 function CheckVersion(oldVersion, newVersion) {
+	if (!oldVersion || !newVersion) {
+		return null;
+	}
 	const oldVersionParts = oldVersion.split(".");
 	const newVersionParts = newVersion.split(".");
 
@@ -371,4 +440,227 @@ function CheckVersion(oldVersion, newVersion) {
 	}
 
 	return false; // Versions are equal
+}
+
+function AddUserLink(plugin_name, file, versionnumber) {
+	console.log(
+		chalk.white("Could not find a spigot or Modrinth link for: " + plugin_name)
+	);
+	//ask the user to add a link to the plugin
+	return new Promise(async (resolve) => {
+		const link = await new Promise((resolve) => {
+			global.readline.question(
+				chalk.white(`Please enter a link for ${plugin_name} (or type 'skip'): `),
+				resolve
+			);
+		});
+		global.readline.pause();
+		//if the link is empty, return
+		if (link === "") {
+			resolve(null);
+			return null;
+		}
+		//check if the link is a valid url
+		const urlRegex = /^(http|https):\/\/[^ "]+$/;
+		if (urlRegex.test(link)) {
+			//psigot check
+			if (link.includes("spigotmc.org/resources/")) {
+				const result = await UserSpigotCheck(
+					plugin_name,
+					link,
+					file,
+					versionnumber
+				);
+				resolve(result);
+				return;
+			}
+			//Modrinth check
+			if (link.includes("modrinth.com/")) {
+				const result = UserModrinthCheck(plugin_name, link, file, versionnumber);
+				resolve(result);
+				return;
+			}
+			//github link
+			if (link.includes("github.com/")) {
+				const result = UserGithubCheck(plugin_name, link, file, versionnumber);
+				resolve(result);
+				return;
+			}
+
+			let data = {
+				plugin_name: plugin_name,
+				plugin_id: null,
+				plugin_file_name: file,
+				plugin_file_version: versionnumber,
+				plugin_latest_version: null,
+				plugin_supported_versions: null,
+				plugin_is_outdated: null,
+				plugin_repository: link,
+			};
+			resolve(data);
+			return;
+		} else {
+			console.log(chalk.red("Invalid link. Please try again."));
+			return await AddUserLink(plugin_name);
+		}
+	});
+}
+
+
+async function UserSpigotCheck(plugin_name, link, file, versionnumber) {
+	//https://www.spigotmc.org/resources/premium-warps-portals-and-more-warp-teleport-system-1-8-1-21-1.66035/
+	//to plugin id is the last number in the link after the .
+	const parts = link.split("/");
+	const lastPartWithId = parts[parts.length - 2]; // Access the second to last part
+	const pluginID = lastPartWithId.split(".").pop();
+	console.log(pluginID);
+	//quick api call to check if the plugin id is valid
+	let response = await fetch(`https://api.spiget.org/v2/resources/${pluginID}`);
+	let data = {
+		plugin_name: plugin_name,
+		plugin_id: pluginID,
+		plugin_file_name: file,
+		plugin_file_version: versionnumber,
+		plugin_latest_version: null,
+		plugin_supported_versions: null,
+		plugin_is_outdated: null,
+		plugin_repository: link,
+	};
+	if (!response.ok) {
+		console.error(
+			chalk.red(
+				`Spiget API error (version): ${response.status} - ${response.statusText}`
+			)
+		);
+		return data;
+	}
+	response = await response.json();
+	let lastVersion = await spigotCheckVersion(pluginID);
+	if (!versionnumber) {
+		versionnumber = "0.0.0";
+	}
+
+	data = {
+		...data,
+		plugin_latest_version: lastVersion,
+		plugin_supported_versions: await supportedVersions.spigotSupportedVersions(
+			pluginID
+		),
+		plugin_is_outdated: CheckVersion(versionnumber, lastVersion),
+		plugin_repository: `https://www.spigotmc.org/resources/${pluginID}/`,
+	};
+	return data;
+}
+
+async function UserModrinthCheck(plugin_name, link, file, versionnumber) {
+	//https://modrinth.com/plugin/geyser
+	//slug is the last part of the link after the /
+	const slug = link.split("/").pop();
+	//quick api call to check if the plugin id is valid
+	let response = await fetch(`https://api.modrinth.com/v2/project/${slug}`);
+	let data = {
+		plugin_name: plugin_name,
+		plugin_id: slug,
+		plugin_file_name: file,
+		plugin_file_version: versionnumber,
+		plugin_latest_version: null,
+		plugin_supported_versions: null,
+		plugin_is_outdated: null,
+		plugin_repository: link,
+	};
+	//if the response is not ok, return null
+	if (!response.ok) {
+		console.error(
+			chalk.red(
+				`Modrinth API error (version): ${response.status} - ${response.statusText}`
+			)
+		);
+		return data;
+	}
+	response = await response.json();
+	let pluginID = response.id;
+	let lastVersion = await GetModrinthVersionID(pluginID);
+	if (!versionnumber) {
+		versionnumber = "0.0.0";
+	}
+	data = {
+		...data,
+    plugin_id: pluginID,
+		plugin_latest_version: lastVersion,
+		plugin_supported_versions: await supportedVersions.modrinthSupportedVersions(
+			pluginID
+		),
+		plugin_is_outdated: CheckVersion(versionnumber, lastVersion),
+		plugin_repository: `https://modrinth.com/plugin/${pluginID}`,
+	};
+  return data;
+}
+
+async function UserGithubCheck(plugin_name, link, file, versionnumber) {
+	//https://github.com/rm20killer/MCFireworkshow
+	//id = the last part of the link after github.com/
+	const id = link.split("/").pop();
+
+	let data = {
+		plugin_name: plugin_name,
+		plugin_id: id,
+		plugin_file_name: file,
+		plugin_file_version: versionnumber,
+		plugin_latest_version: null,
+		plugin_supported_versions: null,
+		plugin_is_outdated: null,
+		plugin_repository: link,
+	};
+	return data;
+}
+
+async function AddToStorage(data) {
+	const file = "UserPlugins.json";
+	//check if the file exists in if not create it
+	const filePath = path.join(__dirname, "..", file);
+
+	const dataFile = await fs.readFile(filePath, "utf8");
+	const jsonData = JSON.parse(dataFile);
+	// Check if the plugin already exists in the UserPlugins.json file
+	const existingPlugin = jsonData.plugins.find(
+		(plugin) => plugin.plugin_name === data.plugin_name
+	);
+	let plguin = {
+		plugin_name: data.plugin_name,
+		plugin_id: data.plugin_id,
+		plugin_repository: data.plugin_repository,
+	};
+
+	if (existingPlugin) {
+		// Update the existing plugin data
+		existingPlugin.plugin_id = data.plugin_id;
+		existingPlugin.plugin_repository = data.plugin_repository;
+	} else {
+		// Add the new plugin to the UserPlugins.json file
+		jsonData.plugins.push(plguin);
+	}
+  // console.log(jsonData.plugins);
+	// Write the updated data back to the file
+	await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
+	return jsonData.plugins[0]; // Return the added plugin data
+}
+
+async function GetUserPlugins(plugin_name) {
+	const file = "UserPlugins.json";
+	const filePath = path.join(__dirname, "..", file);
+
+	const dataFile = await fs.readFile(filePath, "utf8");
+	const jsonData = JSON.parse(dataFile);
+	if (jsonData.plugins.length === 0) {
+		return null;
+	}
+	// Check if the plugin already exists in the UserPlugins.json file
+	const existingPlugin = jsonData.plugins.find(
+		(plugin) => plugin.plugin_name === plugin_name
+	);
+	if (existingPlugin) {
+		return existingPlugin;
+	} else {
+		return null; // Plugin not found
+	}
 }

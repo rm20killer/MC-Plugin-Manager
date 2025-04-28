@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    {
+      "plugin_name": "ArmorStandTools",
+      "plugin_id": "2237",
+      "plugin_repository": "https://www.spigotmc.org/resources/5nWAgdCQ/"
+    },
+    {
+      "plugin_name": "ChessGame",
+      "plugin_id": "chess-mc",
+      "plugin_repository": "https://modrinth.com/plugin/5nWAgdCQ"
+    }
+  ]
+}
