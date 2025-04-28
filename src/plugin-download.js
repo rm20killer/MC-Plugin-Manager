@@ -1,9 +1,9 @@
 const fs = require("fs").promises;
 const { createWriteStream } = require("fs");
-const { Readable } = require("node:stream"); 
+const { Readable } = require("node:stream");
 const chalk = require("chalk");
 const path = require("path");
-
+const { table } = require("node:console");
 
 async function downloadAllPlugin() {
   try {
@@ -12,7 +12,6 @@ async function downloadAllPlugin() {
 
     // Access the 'plugins' array
     const pluginsArray = indexData.plugins;
-
     if (!Array.isArray(pluginsArray)) {
       console.error(
         chalk.red(
@@ -22,13 +21,44 @@ async function downloadAllPlugin() {
       return;
     }
 
-    const pluginNames = pluginsArray.map((plugin) => plugin.plugin_name);
+    //filter out all plugins where plugin_repository is not null
+    const filteredPluginsArray = pluginsArray.filter(
+      (plugin) => plugin.plugin_repository !== null
+    );
+    console.log(
+      chalk.green("Will download " + filteredPluginsArray.length + " plugins Out of " + pluginsArray.length)
+    );
+    console.log(chalk.white("Will download the following plugins:"));
+    console.table(filteredPluginsArray, [
+      "plugin_name",
+      "plugin_file_version",
+      "plugin_latest_version",
+      "plugin_is_outdated",
+    ]);
+
+    //confirm if the user wants to update the plugins
+    const confirm = await new Promise((resolve) => {
+      global.readline.question(
+        chalk.yellow("Do you want to update the outdated plugins? (y/n) "),
+        (answer) => {
+          resolve(answer.toLowerCase() === "y");
+        }
+      );
+    });
+    if (!confirm) {
+      console.log(chalk.red("Download cancelled."));
+      return;
+    }
+
+    const pluginNames = filteredPluginsArray.map(
+      (plugin) => plugin.plugin_name
+    );
     console.log(chalk.green("Found plugins:", pluginNames));
 
-    for (const plugin of pluginsArray) {
+    for (const plugin of filteredPluginsArray) {
       await downloadPlugin(plugin.plugin_name);
     }
-    
+
     console.log(chalk.green("Finished processing all plugins."));
   } catch (error) {
     console.error(chalk.red("Error in downloadAllPlugin:", error.message));
@@ -58,9 +88,9 @@ async function downloadPlugin(pluginName) {
     const url = `https://api.spiget.org/v2/resources/${plugin.plugin_id}/download`;
     //file name should be name //remove anything after " - " or "[" or "("
     const fileName =
-      plugin.plugin_name.split(" - ")[0].split(" [")[0].split(" (")[0] +
+      plugin.plugin_name.split(" ")[0] +
       "_" +
-      plugin.plugin_latest_version + 
+      plugin.plugin_latest_version +
       ".jar";
     //download the file from the url and save it to the plugins folder with the file name
     //if there is a file with the same name, delete it and download the new one
@@ -88,13 +118,15 @@ async function downloadPlugin(pluginName) {
   } else if (repoLink.startsWith("https://modrinth.com/plugin/")) {
     // Modrinth plugin download link
     const modrinthPluginId = plugin.plugin_id;
-    const searchResponse = await fetch('https://api.modrinth.com/v2/project/' + modrinthPluginId);
+    const searchResponse = await fetch(
+      "https://api.modrinth.com/v2/project/" + modrinthPluginId
+    );
     const Data = await searchResponse.json();
     // console.log(Data);
     if (!Data || !Data.versions || Data.versions.length === 0) {
-        console.error(chalk.red(`No versions found for plugin "${pluginName}"`));
-        return;
-        }
+      console.error(chalk.red(`No versions found for plugin "${pluginName}"`));
+      return;
+    }
     // Get the latest version ID from the response assume the last version is the latest but make sure loaders support bukkit, spigot or paper
     const versionId = Data.versions[Data.versions.length - 1];
     // const versionId = Data.versions;
@@ -102,13 +134,13 @@ async function downloadPlugin(pluginName) {
       `https://api.modrinth.com/v2/version/${versionId}`
     );
     if (!versionResponse.ok) {
-        console.error(
-            chalk.red(
-            `Failed to fetch version data for plugin "${pluginName}": ${versionResponse.status} - ${versionResponse.statusText}`
-            )
-        );
-        return;
-        }
+      console.error(
+        chalk.red(
+          `Failed to fetch version data for plugin "${pluginName}": ${versionResponse.status} - ${versionResponse.statusText}`
+        )
+      );
+      return;
+    }
     const versionData = await versionResponse.json();
     // console.log(versionData);
     // return;
@@ -117,33 +149,94 @@ async function downloadPlugin(pluginName) {
     //if same file name exists, skip
     const filePath = path.join("plugins", fileName);
     try {
-        await fs.access(filePath);
-        console.log(
-            chalk.yellow(`File "${fileName}" already exists. skipping...`)
+      await fs.access(filePath);
+      console.log(
+        chalk.yellow(`File "${fileName}" already exists. skipping...`)
+      );
+      return;
+      await fs.unlink(filePath);
+      console.log(chalk.green(`File "${fileName}" deleted successfully.`));
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        console.error(
+          chalk.red(`Error checking file existence: ${err.message}`)
         );
         return;
-        await fs.unlink(filePath);
-        console.log(chalk.green(`File "${fileName}" deleted successfully.`));
-        }
-    catch (err) {
-        if (err.code !== "ENOENT") {
-            console.error(
-            chalk.red(`Error checking file existence: ${err.message}`)
-            );
-            return;
-        }
-    } 
+      }
+    }
 
     //download the file from the url and save it to the plugins folder with the file name
     await downloadFromURL(url, fileName);
+  } else {
+    console.log(chalk.red(`Plugin "${pluginName}" not found in index.json`));
+    return;
   }
-    else{
-        console.log(chalk.red(`Plugin "${pluginName}" not found in index.json`));
-        return;
-    }
 }
 
-module.exports = { downloadAllPlugin, downloadPlugin };
+async function UpdatePlugins() {
+  try {
+    const data = await fs.readFile("index.json", "utf8");
+    const indexData = JSON.parse(data);
+    const pluginsArray = indexData.plugins;
+
+    if (!Array.isArray(pluginsArray)) {
+      console.error(
+        chalk.red(
+          "Error: 'plugins' key in index.json does not contain an array."
+        )
+      );
+      return;
+    }
+    const pluginNames = pluginsArray.map((plugin) => plugin.plugin_name);
+    // Loop through each plugin and check if it is outdated
+    const UnUpdatedPlugins = pluginsArray.filter(
+      (plugin) => plugin.plugin_is_outdated
+    );
+    if (UnUpdatedPlugins.length === 0) {
+      console.log(chalk.green("All plugins are up to date."));
+      return;
+    }
+    console.log(
+      chalk.green("Will update " + UnUpdatedPlugins.length + " Outdated plugins out of " + pluginsArray.length)
+    );
+    console.log(
+      chalk.white("The following plugins are outdated and will be downloaded.")
+    );
+
+    console.table(UnUpdatedPlugins, [
+      "plugin_name",
+      "plugin_file_version",
+      "plugin_latest_version",
+    ]);
+
+    //confirm if the user wants to update the plugins
+    const confirm = await new Promise((resolve) => {
+      global.readline.question(
+        chalk.yellow("Do you want to update the outdated plugins? (y/n) "),
+        (answer) => {
+          resolve(answer.toLowerCase() === "y");
+        }
+      );
+    });
+    if (!confirm) {
+      console.log(chalk.red("Download cancelled."));
+      return;
+    }
+
+    // Loop through each plugin and check if it is outdated
+    for (const plugin of UnUpdatedPlugins) {
+      // Check if the plugin is outdated
+      if (plugin.plugin_is_outdated) {
+        await downloadPlugin(plugin.plugin_name);
+      }
+    }
+  } catch (error) {
+    console.error(chalk.red("Error in UpdatePlugins:", error.message));
+  } finally {
+    console.log(chalk.greenBright("Finished processing all "+UnUpdatedPlugins.length+" plugins."));
+  }
+}
+module.exports = { downloadAllPlugin, downloadPlugin, UpdatePlugins };
 
 async function downloadFromURL(url, fileName) {
   try {

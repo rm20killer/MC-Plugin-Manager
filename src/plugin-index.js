@@ -6,8 +6,8 @@ const cliProgress = require("cli-progress");
 
 // const config = require("../config.yaml");
 async function IndexFolder() {
-  //   const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
-  const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
+  const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
+  // const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
   const FileName = "plugins.json";
 
   const filePath = path.join(PathToPluginFolder, FileName);
@@ -59,7 +59,7 @@ async function IndexFolder() {
         if (pluginData) {
           let newVersionNumber = await spigotCheckVersion(pluginData.id);
           indexData.plugins.push({
-            plugin_name: pluginData.name,
+            plugin_name: pluginName,
             plugin_id: pluginData.id,
             plugin_file_name: file,
             plugin_file_version: versionNumber,
