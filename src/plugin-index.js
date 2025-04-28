@@ -40,16 +40,26 @@ async function IndexFolder() {
     try {
       let pluginName = file.split(/[_-]/)[0];
       //if file.split(/[_-]/)[1] does not contain a number with more then 3 letters, include it in the plugin name
-      if (file.split(/[_-]/)[1] && /^[a-zA-Z]+$/.test(file.split(/[_-]/)[1])) {
-        pluginName += " " + file.split(/[_-]/)[1];
+      if (
+        file.split(/[_\-\.]/)[1] != undefined &&
+        file.split(/[_\-\.]/)[1] &&
+        /^[a-zA-Z]+$/.test(file.split(/[_\-\.]/)[1])
+      ) {
+        pluginName += " " + file.split(/[_\-\.]/)[1];
       }
       //remove .jar from the file name
       pluginName = pluginName.replace(".jar", "");
+      pluginName = pluginName.replace(" jar", "");
       // version should be the file name not including the plugin name and the .jar there may be multiple - after the first one
       const version = file.split(/[_-]/).slice(1).join("-").replace(".jar", "");
 
       //remove any letters from the version string
-      const versionNumber = version.replace(/[^0-9.]/g, "");
+      let versionNumber = version.replace(/[^0-9.]/g, "");
+      //if versionNumber has a . at the start, remove it
+      if (versionNumber.startsWith(".")) {
+        versionNumber = versionNumber.substring(1);
+      }
+
       //check if the plugin is already in the index.json file
       const existingPlugin = indexData.plugins.find(
         (plugin) => plugin.plugin_name === pluginName
@@ -163,32 +173,29 @@ async function spigotCheck(pluginName) {
     );
     const data = await response.json();
     if (Array.isArray(data) && data.length > 0) {
-      const firstResult = data[0];
-      if (firstResult.name) {
-        // Get the first word of the plugin name from the filename
-        const firstWordPlugin = pluginName.toLowerCase().split(/[^a-z0-9]/)[0];
+      for (const result of data) {
+        // Loop through the results
+        if (result.name) {
+          // Get the first word of the plugin name from the filename
+          const firstWordPlugin = pluginName
+            .toLowerCase()
+            .split(/[^a-z0-9]/)[0];
+          // Get the first word of the Spiget result's name
+          const firstWordResult = result.name
+            .toLowerCase()
+            .split(/[^a-z0-9]/)[0];
 
-        // Get the first word of the Spiget result's name
-        const firstWordResult = firstResult.name
-          .toLowerCase()
-          .split(/[^a-z0-9]/)[0];
-
-        // Check if the first words match
-        if (
-          firstWordPlugin &&
-          firstWordResult &&
-          firstWordPlugin === firstWordResult
-        ) {
-          return firstResult;
-        } else {
-          //   console.log(
-          //     chalk.yellow(
-          //       ` | Spigot result "${firstResult.name}" does not match "${pluginName}" Skipping.`
-          //     )
-          //   );
-          return null;
+          // Check if the first words match
+          if (
+            firstWordPlugin &&
+            firstWordResult &&
+            firstWordPlugin === firstWordResult
+          ) {
+            return result;
+          }
         }
       }
+      return null;
     } else {
       return null;
     }
@@ -210,20 +217,19 @@ async function ModrinthCheck(pluginName) {
     );
     const data = await response.json();
     if (data.hits.length > 0) {
-      const pluginData = data.hits.find(
-        (plugin) =>
-          plugin.server_side === "required" &&
-          (plugin.categories.includes("bukkit") ||
-            plugin.categories.includes("spigot") ||
-            plugin.categories.includes("paper"))
-      );
-      if (pluginData) {
-        if (pluginData.title) {
+      // Check the first result first
+      const firstResult = data.hits[0];
+      if (
+        firstResult.server_side === "required" &&
+        (firstResult.categories.includes("bukkit") ||
+          firstResult.categories.includes("spigot") ||
+          firstResult.categories.includes("paper"))
+      ) {
+        if (firstResult.title) {
           const firstWordPlugin = pluginName
             .toLowerCase()
             .split(/[^a-z0-9]/)[0];
-
-          const firstWordResult = pluginData.title
+          const firstWordResult = firstResult.title
             .toLowerCase()
             .split(/[^a-z0-9]/)[0];
 
@@ -232,20 +238,42 @@ async function ModrinthCheck(pluginName) {
             firstWordResult &&
             firstWordPlugin === firstWordResult
           ) {
-            return pluginData;
-          } else {
-            // console.log(
-            //   chalk.yellow(
-            //     ` | Modrinth result "${pluginData.title}" does not match "${pluginName}" Skipping.`
-            //   )
-            // );
-            return null;
+            return firstResult; // Return the first result if it matches
           }
         }
-        return pluginData;
+        // Return the first result even if the title doesn't match the first word
+        return firstResult;
+      }
+
+      // If the first result doesn't match, loop through the rest
+      for (let i = 1; i < data.hits.length; i++) {
+        const pluginData = data.hits[i];
+        if (
+          pluginData.server_side === "required" &&
+          (pluginData.categories.includes("bukkit") ||
+            pluginData.categories.includes("spigot") ||
+            pluginData.categories.includes("paper"))
+        ) {
+          if (pluginData.title) {
+            const firstWordPlugin = pluginName
+              .toLowerCase()
+              .split(/[^a-z0-9]/)[0];
+            const firstWordResult = pluginData.title
+              .toLowerCase()
+              .split(/[^a-z0-9]/)[0];
+
+            if (
+              firstWordPlugin &&
+              firstWordResult &&
+              firstWordPlugin === firstWordResult
+            ) {
+              return pluginData; // Return the first matching result
+            }
+          }
+          return pluginData;
+        }
       }
     } else {
-      //   console.log(chalk.yellow(`No results found for "${pluginName}".`));
       return null;
     }
   } catch (error) {
