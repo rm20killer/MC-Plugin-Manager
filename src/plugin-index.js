@@ -3,359 +3,372 @@ const path = require("path");
 const chalk = require("chalk");
 const { table } = require("table");
 const cliProgress = require("cli-progress");
+const supportedVersions = require("./plugin-version-support.js");
+
 
 // const config = require("../config.yaml");
 async function IndexFolder() {
-  const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
-  // const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
-  const FileName = "plugins.json";
+	const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
+	// const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
+	const FileName = "plugins.json";
 
-  const filePath = path.join(PathToPluginFolder, FileName);
-  //get all files in the folder ending with .jar
-  const files = await fs.readdir(PathToPluginFolder);
-  const pluginFiles = files.filter((file) => file.endsWith(".jar"));
-  const totalPlugins = pluginFiles.length;
+	const filePath = path.join(PathToPluginFolder, FileName);
+	//get all files in the folder ending with .jar
+	const files = await fs.readdir(PathToPluginFolder);
+	const pluginFiles = files.filter((file) => file.endsWith(".jar"));
+	const totalPlugins = pluginFiles.length;
 
-  // Create a new progress bar instance
-  const progressBar = new cliProgress.SingleBar({
-    format:
-      "Indexing |" +
-      chalk.cyan("{bar}") +
-      "| {percentage}% || {value}/{total} Plugins",
-    barCompleteChar: "\u2588",
-    barIncompleteChar: "\u2591",
-    hideCursor: true,
-  });
+	// Create a new progress bar instance
+	const progressBar = new cliProgress.SingleBar({
+		format:
+			"Indexing |" +
+			chalk.cyan("{bar}") +
+			"| {percentage}% || {value}/{total} Plugins",
+		barCompleteChar: "\u2588",
+		barIncompleteChar: "\u2591",
+		hideCursor: true,
+	});
 
-  // Start the progress bar
-  progressBar.start(totalPlugins, 0);
+	// Start the progress bar
+	progressBar.start(totalPlugins, 0);
 
-  let processedPlugins = 0;
+	let processedPlugins = 0;
 
-  // Create the index.json file if it doesn't exist
-  const indexFilePath = path.join(PathToPluginFolder, ".index.json");
-  let indexData = { plugins: [] };
-  //loop through the files and index them by searching them on spigot
-  for (const file of pluginFiles) {
-    try {
-      let pluginName = file.split(/[_-]/)[0];
-      //if file.split(/[_-]/)[1] does not contain a number with more then 3 letters, include it in the plugin name
-      if (
-        file.split(/[_\-\.]/)[1] != undefined &&
-        file.split(/[_\-\.]/)[1] &&
-        /^[a-zA-Z]+$/.test(file.split(/[_\-\.]/)[1])
-      ) {
-        pluginName += " " + file.split(/[_\-\.]/)[1];
-      }
-      //remove .jar from the file name
-      pluginName = pluginName.replace(".jar", "");
-      pluginName = pluginName.replace(" jar", "");
-      // version should be the file name not including the plugin name and the .jar there may be multiple - after the first one
-      const version = file.split(/[_-]/).slice(1).join("-").replace(".jar", "");
+	// Create the index.json file if it doesn't exist
+	const indexFilePath = path.join(PathToPluginFolder, ".index.json");
+	let indexData = { plugins: [] };
+	//loop through the files and index them by searching them on spigot
+	for (const file of pluginFiles) {
+		try {
+			let pluginName = file.split(/[_-]/)[0];
+			//if file.split(/[_-]/)[1] does not contain a number with more then 3 letters, include it in the plugin name
+			if (
+				file.split(/[_\-\.]/)[1] != undefined &&
+				file.split(/[_\-\.]/)[1] &&
+				/^[a-zA-Z]+$/.test(file.split(/[_\-\.]/)[1])
+			) {
+				pluginName += " " + file.split(/[_\-\.]/)[1];
+			}
+			//remove .jar from the file name
+			pluginName = pluginName.replace(".jar", "");
+			pluginName = pluginName.replace(" jar", "");
+			// version should be the file name not including the plugin name and the .jar there may be multiple - after the first one
+			const version = file.split(/[_-]/).slice(1).join("-").replace(".jar", "");
 
-      //remove any letters from the version string
-      let versionNumber = version.replace(/[^0-9.]/g, "");
-      //if versionNumber has a . at the start, remove it
-      if (versionNumber.startsWith(".")) {
-        versionNumber = versionNumber.substring(1);
-      }
+			//remove any letters from the version string
+			let versionNumber = version.replace(/[^0-9.]/g, "");
+			//if versionNumber has a . at the start, remove it
+			if (versionNumber.startsWith(".")) {
+				versionNumber = versionNumber.substring(1);
+			}
 
-      //check if the plugin is already in the index.json file
-      const existingPlugin = indexData.plugins.find(
-        (plugin) => plugin.plugin_name === pluginName
-      );
-      if (!existingPlugin) {
-        let pluginData = await spigotCheck(pluginName);
-        if (pluginData) {
-          let newVersionNumber = await spigotCheckVersion(pluginData.id);
-          indexData.plugins.push({
-            plugin_name: pluginName,
-            plugin_id: pluginData.id,
-            plugin_file_name: file,
-            plugin_file_version: versionNumber,
-            plugin_latest_version: newVersionNumber,
-            plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
-            plugin_repository: `https://www.spigotmc.org/resources/${pluginData.id}/`,
-          });
-        } else {
-          let pluginData = await ModrinthCheck(pluginName);
-          if (pluginData) {
-            let newVersionNumber = await ModrinthCheckVersion(
-              pluginData.project_id
-            );
-            indexData.plugins.push({
-              plugin_name: pluginData.title,
-              plugin_id: pluginData.project_id,
-              plugin_file_name: file,
-              plugin_file_version: versionNumber,
-              plugin_latest_version: newVersionNumber,
-              plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
-              plugin_repository: `https://modrinth.com/plugin/${pluginData.project_id}`,
-            });
-          } else {
-            console.log(chalk.red(` | Plugin "${pluginName}" not found`));
-            //still push data to the index.json file with the plugin name and file name only
-            indexData.plugins.push({
-              plugin_name: pluginName,
-              plugin_id: null,
-              plugin_file_name: file,
-              plugin_file_version: versionNumber,
-              plugin_latest_version: null,
-              plugin_is_outdated: null,
-              plugin_repository: null,
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error(chalk.red(`Error processing file "${file}":`), error);
-      continue; // Skip to the next file on error
-    } finally {
-      processedPlugins++;
-      progressBar.update(processedPlugins);
-    }
-  }
-  // Write the index data to the index.json file
-  await fs.writeFile(indexFilePath, JSON.stringify(indexData, null, 2));
-  console.log(chalk.green(` | Index file created at ${indexFilePath}`));
-  // Display the index data in a table format
-  console.log(chalk.cyanBright("----------------------------------------"));
-  console.log(chalk.white("Indexing complete."));
-  console.log(chalk.cyanBright("----------------------------------------"));
-  console.log(chalk.white("Plugins indexed:"));
-  const tableData = [
-    [
-      "Name",
-      "ID",
-      "File Name",
-      "File Version",
-      "Latest Version",
-      "outdated",
-      "Repository",
-    ],
-  ];
-  indexData.plugins.forEach((plugin) => {
-    tableData.push([
-      plugin.plugin_name,
-      plugin.plugin_id,
-      plugin.plugin_file_name,
-      plugin.plugin_file_version,
-      plugin.plugin_latest_version,
-      plugin.plugin_is_outdated,
-      plugin.plugin_repository,
-    ]);
-  });
-  const output = table(tableData, {
-    columns: {
-      0: { alignment: "left" },
-      1: { alignment: "left" },
-      2: { alignment: "left" },
-      3: { alignment: "left" },
-      4: { alignment: "left" },
-      5: { alignment: "left" },
-      6: { alignment: "left" },
-    },
-  });
-  console.log(output);
-  console.log(chalk.white(totalPlugins + " plugins total."));
+			//check if the plugin is already in the index.json file
+			const existingPlugin = indexData.plugins.find(
+				(plugin) => plugin.plugin_name === pluginName
+			);
+			if (!existingPlugin) {
+				let pluginData = await spigotCheck(pluginName);
+				if (pluginData) {
+					let newVersionNumber = await spigotCheckVersion(pluginData.id);
+					indexData.plugins.push({
+						plugin_name: pluginName,
+						plugin_id: pluginData.id,
+						plugin_file_name: file,
+						plugin_file_version: versionNumber,
+						plugin_latest_version: newVersionNumber,
+            plugin_supported_versions: await supportedVersions.spigotSupportedVersions(pluginData.id),
+						plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
+						plugin_repository: `https://www.spigotmc.org/resources/${pluginData.id}/`,
+					});
+				} else {
+					let pluginData = await ModrinthCheck(pluginName);
+					if (pluginData) {
+						let newVersionNumber = await ModrinthCheckVersion(pluginData.project_id);
+						indexData.plugins.push({
+							plugin_name: pluginData.title,
+							plugin_id: pluginData.project_id,
+							plugin_file_name: file,
+							plugin_file_version: versionNumber,
+							plugin_latest_version: newVersionNumber,
+              plugin_supported_versions: await  supportedVersions.modrinthSupportedVersions(pluginData.project_id),
+							plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
+							plugin_repository: `https://modrinth.com/plugin/${pluginData.project_id}`,
+						});
+					} else {
+						console.log(chalk.red(` | Plugin "${pluginName}" not found`));
+						//still push data to the index.json file with the plugin name and file name only
+						indexData.plugins.push({
+							plugin_name: pluginName,
+							plugin_id: null,
+							plugin_file_name: file,
+							plugin_file_version: versionNumber,
+							plugin_latest_version: null,
+							plugin_is_outdated: null,
+							plugin_repository: null,
+						});
+					}
+				}
+			}
+		} catch (error) {
+			console.error(chalk.red(`Error processing file "${file}":`), error);
+			continue; // Skip to the next file on error
+		} finally {
+			processedPlugins++;
+			progressBar.update(processedPlugins);
+		}
+	}
+	// Write the index data to the index.json file
+	await fs.writeFile(indexFilePath, JSON.stringify(indexData, null, 2));
+	console.log(chalk.green(` | Index file created at ${indexFilePath}`));
+	// Display the index data in a table format
+	console.log(chalk.cyanBright("----------------------------------------"));
+	console.log(chalk.white("Indexing complete."));
+	console.log(chalk.cyanBright("----------------------------------------"));
+	console.log(chalk.white("Plugins indexed:"));
+	const tableData = [
+		[
+			"Name",
+			"ID",
+			"File Name",
+			"File Version",
+			"Latest Version",
+      "supported Versions",
+			"outdated",
+			"Repository",
+		],
+	];
+	indexData.plugins.forEach((plugin) => {
+		tableData.push([
+			plugin.plugin_name,
+			plugin.plugin_id,
+			plugin.plugin_file_name,
+			plugin.plugin_file_version,
+			plugin.plugin_latest_version,
+      plugin.plugin_supported_versions,
+			plugin.plugin_is_outdated,
+			plugin.plugin_repository,
+		]);
+	});
+	const output = table(tableData, {
+		columns: {
+			0: { alignment: "left" },
+			1: { alignment: "left" },
+			2: { alignment: "left" },
+			3: { alignment: "left" },
+			4: { alignment: "left" },
+			5: { alignment: "left" },
+			6: { alignment: "left" },
+		},
+	});
+	console.log(output);
+	console.log(chalk.white(totalPlugins + " plugins total."));
 }
 
 module.exports = {
-  IndexFolder,
+	IndexFolder,
 };
 
 async function spigotCheck(pluginName) {
-  try {
-    const response = await fetch(
-      `https://api.spiget.org/v2/search/resources/${encodeURIComponent(
-        pluginName
-      )}?fields=id,name`
-    );
-    const data = await response.json();
-    if (Array.isArray(data) && data.length > 0) {
-      for (const result of data) {
-        // Loop through the results
-        if (result.name) {
-          // Get the first word of the plugin name from the filename
-          const firstWordPlugin = pluginName
-            .toLowerCase()
-            .split(/[^a-z0-9]/)[0];
-          // Get the first word of the Spiget result's name
-          const firstWordResult = result.name
-            .toLowerCase()
-            .split(/[^a-z0-9]/)[0];
+	try {
+		const response = await fetch(
+			`https://api.spiget.org/v2/search/resources/${encodeURIComponent(
+				pluginName
+			)}?fields=id,name`
+		);
+		const data = await response.json();
+		if (Array.isArray(data) && data.length > 0) {
+			for (const result of data) {
+				// Loop through the results
+				if (result.name) {
+					// Get the first word of the plugin name from the filename
+					const firstWordPlugin = pluginName.toLowerCase().split(/[^a-z0-9]/)[0];
+					// Get the first word of the Spiget result's name
+					const firstWordResult = result.name.toLowerCase().split(/[^a-z0-9]/)[0];
 
-          // Check if the first words match
-          if (
-            firstWordPlugin &&
-            firstWordResult &&
-            firstWordPlugin === firstWordResult
-          ) {
-            return result;
-          }
-        }
-      }
-      return null;
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      chalk.red(`Error fetching Spigot plugin data for "${pluginName}":`),
-      error
-    );
-    return null;
-  }
+					// Check if the first words match
+					if (
+						firstWordPlugin &&
+						firstWordResult &&
+						firstWordPlugin === firstWordResult
+					) {
+						return result;
+					}
+				}
+			}
+			return null;
+		} else {
+			return null;
+		}
+	} catch (error) {
+		console.error(
+			chalk.red(`Error fetching Spigot plugin data for "${pluginName}":`),
+			error
+		);
+		return null;
+	}
 }
 
 async function ModrinthCheck(pluginName) {
+	try {
+		const response = await fetch(
+			`https://api.modrinth.com/v2/search?query=${encodeURIComponent(
+				pluginName
+			)}&limit=5`
+		);
+		const data = await response.json();
+		if (data.hits.length > 0) {
+			// Check the first result first
+			const firstResult = data.hits[0];
+			if (
+				firstResult.server_side === "required" &&
+				(firstResult.categories.includes("bukkit") ||
+					firstResult.categories.includes("spigot") ||
+					firstResult.categories.includes("paper"))
+			) {
+				if (firstResult.title) {
+					const firstWordPlugin = pluginName.toLowerCase().split(/[^a-z0-9]/)[0];
+					const firstWordResult = firstResult.title
+						.toLowerCase()
+						.split(/[^a-z0-9]/)[0];
+
+					if (
+						firstWordPlugin &&
+						firstWordResult &&
+						firstWordPlugin === firstWordResult
+					) {
+						return firstResult; // Return the first result if it matches
+					}
+				}
+				// Return the first result even if the title doesn't match the first word
+				return firstResult;
+			}
+
+			// If the first result doesn't match, loop through the rest
+			for (let i = 1; i < data.hits.length; i++) {
+				const pluginData = data.hits[i];
+				if (
+					pluginData.server_side === "required" &&
+					(pluginData.categories.includes("bukkit") ||
+						pluginData.categories.includes("spigot") ||
+						pluginData.categories.includes("paper"))
+				) {
+					if (pluginData.title) {
+						const firstWordPlugin = pluginName.toLowerCase().split(/[^a-z0-9]/)[0];
+						const firstWordResult = pluginData.title
+							.toLowerCase()
+							.split(/[^a-z0-9]/)[0];
+
+						if (
+							firstWordPlugin &&
+							firstWordResult &&
+							firstWordPlugin === firstWordResult
+						) {
+							return pluginData; // Return the first matching result
+						}
+					}
+					return pluginData;
+				}
+			}
+		} else {
+			return null;
+		}
+	} catch (error) {
+		console.error(
+			chalk.red(`Error fetching Modrinth plugin data for "${pluginName}":`),
+			error
+		);
+		return null;
+	}
+}
+async function GetModrinthVersionID(pluginID) {
   try {
-    const response = await fetch(
-      `https://api.modrinth.com/v2/search?query=${encodeURIComponent(
-        pluginName
-      )}&limit=5`
-    );
-    const data = await response.json();
-    if (data.hits.length > 0) {
-      // Check the first result first
-      const firstResult = data.hits[0];
-      if (
-        firstResult.server_side === "required" &&
-        (firstResult.categories.includes("bukkit") ||
-          firstResult.categories.includes("spigot") ||
-          firstResult.categories.includes("paper"))
-      ) {
-        if (firstResult.title) {
-          const firstWordPlugin = pluginName
-            .toLowerCase()
-            .split(/[^a-z0-9]/)[0];
-          const firstWordResult = firstResult.title
-            .toLowerCase()
-            .split(/[^a-z0-9]/)[0];
-
-          if (
-            firstWordPlugin &&
-            firstWordResult &&
-            firstWordPlugin === firstWordResult
-          ) {
-            return firstResult; // Return the first result if it matches
-          }
-        }
-        // Return the first result even if the title doesn't match the first word
-        return firstResult;
-      }
-
-      // If the first result doesn't match, loop through the rest
-      for (let i = 1; i < data.hits.length; i++) {
-        const pluginData = data.hits[i];
-        if (
-          pluginData.server_side === "required" &&
-          (pluginData.categories.includes("bukkit") ||
-            pluginData.categories.includes("spigot") ||
-            pluginData.categories.includes("paper"))
-        ) {
-          if (pluginData.title) {
-            const firstWordPlugin = pluginName
-              .toLowerCase()
-              .split(/[^a-z0-9]/)[0];
-            const firstWordResult = pluginData.title
-              .toLowerCase()
-              .split(/[^a-z0-9]/)[0];
-
-            if (
-              firstWordPlugin &&
-              firstWordResult &&
-              firstWordPlugin === firstWordResult
-            ) {
-              return pluginData; // Return the first matching result
-            }
-          }
-          return pluginData;
-        }
-      }
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      chalk.red(`Error fetching Modrinth plugin data for "${pluginName}":`),
-      error
-    );
-    return null;
-  }
+		const response = await fetch(
+			`https://api.modrinth.com/v2/project/${pluginID}/version`
+		);
+		const data = await response.json(); //get the first version that is compatible with bukkit, spigot or paper
+		const compatibleVersion = data.find((version) =>
+			version.loaders.some(
+				(loader) => loader === "bukkit" || loader === "spigot" || loader === "paper"
+			)
+		);
+		if (compatibleVersion) {
+			return compatibleVersion.id;
+		}
+	} catch (error) {
+		return null;
+	}
 }
 
 async function ModrinthCheckVersion(pluginID) {
-  try {
-    const response = await fetch(
-      `https://api.modrinth.com/v2/project/${pluginID}/version`
-    );
-    const data = await response.json(); //get the first version that is compatible with bukkit, spigot or paper
-    const compatibleVersion = data.find((version) =>
-      version.loaders.some(
-        (loader) =>
-          loader === "bukkit" || loader === "spigot" || loader === "paper"
-      )
-    );
-    if (compatibleVersion) {
-      return compatibleVersion.version_number;
-    }
-  } catch (error) {
-    console.error(
-      chalk.red(`Error fetching Modrinth plugin data for "${pluginID}":`),
-      error
-    );
-    return null;
-  }
+	try {
+		const response = await fetch(
+			`https://api.modrinth.com/v2/project/${pluginID}/version`
+		);
+		const data = await response.json(); //get the first version that is compatible with bukkit, spigot or paper
+		const compatibleVersion = data.find((version) =>
+			version.loaders.some(
+				(loader) => loader === "bukkit" || loader === "spigot" || loader === "paper"
+			)
+		);
+		if (compatibleVersion) {
+			return compatibleVersion.version_number;
+		}
+	} catch (error) {
+		console.error(
+			chalk.red(`Error fetching Modrinth plugin data for "${pluginID}":`),
+			error
+		);
+		return null;
+	}
 }
 
 async function spigotCheckVersion(pluginID) {
-  try {
-    const versionResponse = await fetch(
-      `https://api.spiget.org/v2/resources/${pluginID}/versions/latest`
-    );
-    if (!versionResponse.ok) {
-      console.error(
-        chalk.red(
-          `Spiget API error (version): ${versionResponse.status} - ${versionResponse.statusText}`
-        )
-      );
-      return null;
-    }
-    const versionData = await versionResponse.json();
-    if (versionData) {
-      return versionData.name; // Return the latest version name
-    } else {
-      console.log(chalk.yellow(`No versions found for "${pluginID}".`));
-      return null;
-    }
-  } catch (error) {
-    console.error(
-      chalk.red(`Error fetching Spigot plugin data for "${pluginID}":`),
-      error
-    );
-    return null;
-  }
+	try {
+		const versionResponse = await fetch(
+			`https://api.spiget.org/v2/resources/${pluginID}/versions/latest`
+		);
+		if (!versionResponse.ok) {
+			console.error(
+				chalk.red(
+					`Spiget API error (version): ${versionResponse.status} - ${versionResponse.statusText}`
+				)
+			);
+			return null;
+		}
+		const versionData = await versionResponse.json();
+		if (versionData) {
+			return versionData.name; // Return the latest version name
+		} else {
+			console.log(chalk.yellow(`No versions found for "${pluginID}".`));
+			return null;
+		}
+	} catch (error) {
+		console.error(
+			chalk.red(`Error fetching Spigot plugin data for "${pluginID}":`),
+			error
+		);
+		return null;
+	}
 }
 
 function CheckVersion(oldVersion, newVersion) {
-  const oldVersionParts = oldVersion.split(".");
-  const newVersionParts = newVersion.split(".");
+	const oldVersionParts = oldVersion.split(".");
+	const newVersionParts = newVersion.split(".");
 
-  for (
-    let i = 0;
-    i < Math.max(oldVersionParts.length, newVersionParts.length);
-    i++
-  ) {
-    const oldPart = parseInt(oldVersionParts[i] || "0", 10);
-    const newPart = parseInt(newVersionParts[i] || "0", 10);
+	for (
+		let i = 0;
+		i < Math.max(oldVersionParts.length, newVersionParts.length);
+		i++
+	) {
+		const oldPart = parseInt(oldVersionParts[i] || "0", 10);
+		const newPart = parseInt(newVersionParts[i] || "0", 10);
 
-    if (newPart > oldPart) {
-      return true; // New version is greater
-    } else if (newPart < oldPart) {
-      return false; // Old version is greater
-    }
-  }
+		if (newPart > oldPart) {
+			return true; // New version is greater
+		} else if (newPart < oldPart) {
+			return false; // Old version is greater
+		}
+	}
 
-  return false; // Versions are equal
+	return false; // Versions are equal
 }

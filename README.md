@@ -1,2 +1,3 @@
 # MC-Plugin-Manager
- A node JS plugin manager to update plugins
+ A node JS based plugin manager to help update plugins
+
