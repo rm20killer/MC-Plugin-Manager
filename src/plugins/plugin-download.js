@@ -98,8 +98,12 @@ async function downloadAllPlugin() {
 }
 
 async function downloadPlugin(pluginName) {
+	const pluginPath = path.join(await config.GetServerPath(), "plugins");
+	const FileName = ".index.json";
+	let server = await config.GetServer();
+	const indexFilePath = path.join(pluginPath, ".index.json");
 	//look though the index.json file for the plugin name and get the repo link
-	const data = await fs.readFile("index.json", "utf8");
+	const data = await fs.readFile(indexFilePath, "utf8");
 	const indexData = JSON.parse(data);
 	const plugin = indexData.plugins.find((p) => p.plugin_name === pluginName);
 	if (!plugin) {
@@ -124,7 +128,8 @@ async function downloadPlugin(pluginName) {
 			".jar";
 		//download the file from the url and save it to the plugins folder with the file name
 		//if there is a file with the same name, delete it and download the new one
-		const filePath = path.join("plugins", fileName);
+		const pluginsDir = "plugins/" + server.name;
+		const filePath = path.join(pluginsDir, fileName);
 		try {
 			await fs.access(filePath);
 			console.log(chalk.yellow(`File "${fileName}" already exists. skipping...`));
@@ -176,7 +181,8 @@ async function downloadPlugin(pluginName) {
 		const url = versionData.files[0].url;
 		const fileName = versionData.files[0].filename;
 		//if same file name exists, skip
-		const filePath = path.join("plugins", fileName);
+		const pluginsDir = "plugins/" + server.name;
+		const filePath = path.join(pluginsDir, fileName);
 		try {
 			await fs.access(filePath);
 			console.log(chalk.yellow(`File "${fileName}" already exists. skipping...`));
@@ -205,9 +211,10 @@ async function UpdatePlugins() {
 	let downloadFailureCount = 0;
 	let totalPlugins = 0;
 	let FailedPlugins = [];
-
+	const pluginPath = path.join(await config.GetServerPath(), "plugins");
+	const indexFilePath = path.join(pluginPath, ".index.json");
 	try {
-		const data = await fs.readFile("index.json", "utf8");
+		const data = await fs.readFile(indexFilePath, "utf8");
 		const indexData = JSON.parse(data);
 		const pluginsArray = indexData.plugins;
 
@@ -217,7 +224,7 @@ async function UpdatePlugins() {
 			);
 			return;
 		}
-		const pluginNames = pluginsArray.map((plugin) => plugin.plugin_name);
+		// const pluginNames = pluginsArray.map((plugin) => plugin.plugin_name);
 		// Loop through each plugin and check if it is outdated
 		const UnUpdatedPlugins = pluginsArray.filter(
 			(plugin) => plugin.plugin_is_outdated
@@ -309,8 +316,8 @@ async function downloadFromURL(url, fileName) {
 			);
 			return;
 		}
-
-		const pluginsDir = "plugins";
+		let server = await config.GetServer();
+		const pluginsDir = "plugins/" + server.name;
 		await fs.mkdir(pluginsDir, { recursive: true });
 		const filePath = path.join(pluginsDir, fileName);
 		const fileStream = createWriteStream(filePath);
