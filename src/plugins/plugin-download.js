@@ -4,13 +4,17 @@ const { Readable } = require("node:stream");
 const chalk = require("chalk");
 const path = require("path");
 const { table } = require("node:console");
+const config = require("../config");
 
 async function downloadAllPlugin() {
+	const pluginPath = path.join(await config.GetServerPath(), "plugins");
+	const FileName = ".index.json";
+	const indexFilePath = path.join(pluginPath, ".index.json");
 	let downloadFailureCount = 0;
 	let totalPlugins = 0;
 	let FailedPlugins = [];
 	try {
-		const indexDataRaw = await fs.readFile("index.json", "utf8");
+		const indexDataRaw = await fs.readFile(indexFilePath, "utf8");
 		const indexData = JSON.parse(indexDataRaw);
 
 		// Access the 'plugins' array
@@ -198,9 +202,9 @@ async function downloadPlugin(pluginName) {
 }
 
 async function UpdatePlugins() {
-  let downloadFailureCount = 0;
-  let totalPlugins = 0;
-  let FailedPlugins = [];
+	let downloadFailureCount = 0;
+	let totalPlugins = 0;
+	let FailedPlugins = [];
 
 	try {
 		const data = await fs.readFile("index.json", "utf8");
@@ -239,7 +243,7 @@ async function UpdatePlugins() {
 			"plugin_file_version",
 			"plugin_latest_version",
 		]);
-    totalPlugins = UnUpdatedPlugins.length;
+		totalPlugins = UnUpdatedPlugins.length;
 		//confirm if the user wants to update the plugins
 		const confirm = await new Promise((resolve) => {
 			global.readline.question(
@@ -259,10 +263,10 @@ async function UpdatePlugins() {
 			// Check if the plugin is outdated
 			if (plugin.plugin_is_outdated) {
 				const success = await downloadPlugin(plugin.plugin_name);
-        if (!success) {
-          downloadFailureCount++;
-          FailedPlugins.push(plugin);
-        }
+				if (!success) {
+					downloadFailureCount++;
+					FailedPlugins.push(plugin);
+				}
 			}
 		}
 	} catch (error) {

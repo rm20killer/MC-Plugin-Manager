@@ -1,0 +1,11 @@
+{
+    "SelectedServer": 0,
+    "servers": [
+        {
+            "name": "1.12.5 testing",
+            "folderPath": "D:/server/minecraft/1.21/testing/",
+            "ServerType": "Paper",
+            "ServerVersion": "1.21.5"
+        }
+    ]
+}

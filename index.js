@@ -7,10 +7,13 @@ const readline = require("readline").createInterface({
 global.readline = readline;
 const fs = require("fs").promises;
 const chalk = require("chalk");
-const plugin = require("./src/plugin.js");
-const pluginDownload = require("./src/plugin-download.js");
-const index = require("./src/plugin-index.js");
-
+const plugin = require("./src/plugins/plugin.js");
+const pluginDownload = require("./src/plugins/plugin-download.js");
+const index = require("./src/plugins/plugin-index.js");
+const checks = require("./src/plugins/plugin-check.js");
+const config = require("./src/config.js");
+let configData = null;
+global.configData = configData;
 const greet = () => {
 	return new Promise((resolve) => {
 		figlet("PlugManager", function (err, data) {
@@ -54,13 +57,23 @@ const info = () => {
 	);
 	console.log(
 		chalk.white("  "),
+		chalk.cyanBright("server <set|add>".padEnd(30)),
+		chalk.white("- To set the server to use.")
+	);
+	console.log(
+		chalk.white("  "),
 		chalk.cyanBright("index".padEnd(30)),
 		chalk.white("- To automatically index plugins")
 	);
 	console.log(
 		chalk.white("  "),
+		chalk.cyanBright("check".padEnd(30)),
+		chalk.white("- Check for updates for all plugins")
+	);
+	console.log(
+		chalk.white("  "),
 		chalk.cyanBright("add <platform> <plugin name>".padEnd(30)),
-		chalk.white("- To add a plugin to the index.")
+		chalk.white("- To add a plugin to the index. (need to redo)")
 	);
 	console.log(
 		chalk.white("  "),
@@ -92,8 +105,37 @@ const info = () => {
 			"---------------------------------------------------------------"
 		)
 	);
+	serverInfo();
 };
-
+const serverInfo = async () => {
+	let server = await config.GetServer();
+	console.log(chalk.white("Selected Server information:"));
+	console.log(
+		chalk.white("  "),
+		chalk.cyanBright("Server Name:".padEnd(10)),
+		chalk.white(server.name)
+	);
+	console.log(
+		chalk.white("  "),
+		chalk.cyanBright("Server Path:".padEnd(10)),
+		chalk.white(server.ServerPath)
+	);
+	console.log(
+		chalk.white("  "),
+		chalk.cyanBright("Server Type:".padEnd(10)),
+		chalk.white(server.type)
+	);
+	console.log(
+		chalk.white("  "),
+		chalk.cyanBright("Server Version:".padEnd(10)),
+		chalk.white(server.version)
+	);
+	console.log(
+		chalk.cyanBright(
+			"---------------------------------------------------------------"
+		)
+	);
+};
 const handleCommand = async (input) => {
 	readline.pause();
 	const parts = input.trim().split(/\s+/);
@@ -193,6 +235,33 @@ const handleCommand = async (input) => {
 				}
 			} else {
 				await index.IndexFolder(false);
+			}
+		},
+		check: async () => {
+			await checks.checkPluginVersion();
+		},
+		server: async () => {
+			if (args.length >= 1) {
+				const action = args[0].toLowerCase();
+				if (action === "list") {
+					const servers = await config.GetServerList();
+					console.log(chalk.white("Available servers:"));
+					console.table(servers);
+				} else if (action === "set") {
+					if (args.length >= 2) {
+						const serverName = args[1];
+						await config.SetServerIndex(serverName);
+					} else {
+						console.log(chalk.red("Usage: server set <index|name>"));
+						return;
+					}
+				} else if (action === "add") {
+					await config.AddServer();
+				} else {
+					console.log(chalk.red("Unknown action. Use 'set' or 'add'."));
+				}
+			} else {
+				console.log(chalk.red("Usage: server <list|set|add>"));
 			}
 		},
 		exit: () => {

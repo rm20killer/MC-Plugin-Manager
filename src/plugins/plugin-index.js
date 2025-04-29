@@ -5,12 +5,15 @@ const { table } = require("table");
 const cliProgress = require("cli-progress");
 const supportedVersions = require("./plugin-version-support.js");
 const { json } = require("stream/consumers");
+const config = require("../config");
 
 // const config = require("../config.yaml");
 async function IndexFolder(shouldskip) {
-	const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
+	const PathToPluginFolder = path.join(await config.GetServerPath(), "plugins");
+
+	// const PathToPluginFolder = "D:/server/minecraft/1.21/testing/plugins";
 	// const PathToPluginFolder = "D:/server/server manager/servers/1.12.5 testing/plugins";
-	const FileName = "plugins.json";
+	const FileName = ".index.json";
 
 	let skip = false;
 
@@ -18,7 +21,6 @@ async function IndexFolder(shouldskip) {
 		skip = true;
 	}
 
-	const filePath = path.join(PathToPluginFolder, FileName);
 	//get all files in the folder ending with .jar
 	const files = await fs.readdir(PathToPluginFolder);
 	const pluginFiles = files.filter((file) => file.endsWith(".jar"));
@@ -41,7 +43,7 @@ async function IndexFolder(shouldskip) {
 	let processedPlugins = 0;
 
 	// Create the index.json file if it doesn't exist
-	const indexFilePath = path.join(PathToPluginFolder, ".index.json");
+	const indexFilePath = path.join(PathToPluginFolder, FileName);
 	let indexData = { plugins: [] };
 	//loop through the files and index them by searching them on spigot
 	for (const file of pluginFiles) {
@@ -87,7 +89,7 @@ async function IndexFolder(shouldskip) {
 						plugin_is_outdated: CheckVersion(versionNumber, newVersionNumber),
 						plugin_repository: `https://www.spigotmc.org/resources/${pluginData.id}/`,
 					});
-          //modrinth check
+					//modrinth check
 				} else {
 					let pluginData = await ModrinthCheck(pluginName);
 					if (pluginData) {
@@ -108,12 +110,12 @@ async function IndexFolder(shouldskip) {
 					} else {
 						let data = await GetUserPlugins(pluginName);
 						if (data && data.plugin_name) {
-              let lastVersion;
-              if(data.plugin_repository.includes("spigotmc.org")) {
-                lastVersion = await spigotCheckVersion(data.plugin_id);
-              } else if(data.plugin_repository.includes("modrinth.com")) {
-                lastVersion = await ModrinthCheckVersion(data.plugin_id);
-              }
+							let lastVersion;
+							if (data.plugin_repository.includes("spigotmc.org")) {
+								lastVersion = await spigotCheckVersion(data.plugin_id);
+							} else if (data.plugin_repository.includes("modrinth.com")) {
+								lastVersion = await ModrinthCheckVersion(data.plugin_id);
+							}
 							if (!versionNumber) {
 								versionNumber = "0.0.0";
 							}
@@ -229,10 +231,6 @@ async function IndexFolder(shouldskip) {
 	console.log(output);
 	console.log(chalk.white(totalPlugins + " plugins total."));
 }
-
-module.exports = {
-	IndexFolder,
-};
 
 async function spigotCheck(pluginName) {
 	try {
@@ -506,7 +504,6 @@ function AddUserLink(plugin_name, file, versionnumber) {
 	});
 }
 
-
 async function UserSpigotCheck(plugin_name, link, file, versionnumber) {
 	//https://www.spigotmc.org/resources/premium-warps-portals-and-more-warp-teleport-system-1-8-1-21-1.66035/
 	//to plugin id is the last number in the link after the .
@@ -585,7 +582,7 @@ async function UserModrinthCheck(plugin_name, link, file, versionnumber) {
 	}
 	data = {
 		...data,
-    plugin_id: pluginID,
+		plugin_id: pluginID,
 		plugin_latest_version: lastVersion,
 		plugin_supported_versions: await supportedVersions.modrinthSupportedVersions(
 			pluginID
@@ -593,7 +590,7 @@ async function UserModrinthCheck(plugin_name, link, file, versionnumber) {
 		plugin_is_outdated: CheckVersion(versionnumber, lastVersion),
 		plugin_repository: `https://modrinth.com/plugin/${pluginID}`,
 	};
-  return data;
+	return data;
 }
 
 async function UserGithubCheck(plugin_name, link, file, versionnumber) {
@@ -617,7 +614,7 @@ async function UserGithubCheck(plugin_name, link, file, versionnumber) {
 async function AddToStorage(data) {
 	const file = "UserPlugins.json";
 	//check if the file exists in if not create it
-	const filePath = path.join(__dirname, "..", file);
+	const filePath = path.join(__dirname, "..", "..", file);
 
 	const dataFile = await fs.readFile(filePath, "utf8");
 	const jsonData = JSON.parse(dataFile);
@@ -639,7 +636,7 @@ async function AddToStorage(data) {
 		// Add the new plugin to the UserPlugins.json file
 		jsonData.plugins.push(plguin);
 	}
-  // console.log(jsonData.plugins);
+	// console.log(jsonData.plugins);
 	// Write the updated data back to the file
 	await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2));
 	return jsonData.plugins[0]; // Return the added plugin data
@@ -647,7 +644,7 @@ async function AddToStorage(data) {
 
 async function GetUserPlugins(plugin_name) {
 	const file = "UserPlugins.json";
-	const filePath = path.join(__dirname, "..", file);
+	const filePath = path.join(__dirname, "..", "..", file);
 
 	const dataFile = await fs.readFile(filePath, "utf8");
 	const jsonData = JSON.parse(dataFile);
@@ -664,3 +661,10 @@ async function GetUserPlugins(plugin_name) {
 		return null; // Plugin not found
 	}
 }
+
+module.exports = {
+	IndexFolder,
+	CheckVersion,
+	ModrinthCheckVersion,
+	spigotCheckVersion,
+};
